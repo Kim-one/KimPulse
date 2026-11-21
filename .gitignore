@@ -1,0 +1,12 @@
+__pycache__/
+.pytest_cache/
+.venv/
+# Terraform: never commit state (it can contain secrets) or downloaded providers
+infra/.terraform/
+infra/*.tfstate*
+.idea
+.env
+*.tfstate
+*.tfstate.*
+.terraform/
+terraform.tfvars

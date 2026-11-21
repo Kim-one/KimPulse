@@ -1,0 +1,78 @@
+# CI/CD pipeline for KimPulse
+#
+# What it does on every push to main that touches the backend:
+#   1. test   - installs dependencies and runs the tests
+#   2. deploy - sends the code to Azure App Service
+#   3. verify - calls /health on the live site to confirm the deploy worked
+#
+# One-time setup in GitHub (Settings > Secrets and variables > Actions):
+#   Variable  AZURE_WEBAPP_NAME             = the app_name output from terraform
+#   Secret    AZURE_WEBAPP_PUBLISH_PROFILE  = output of:
+#       az webapp deployment list-publishing-profiles \
+#         --name <app_name> --resource-group rg-kimpulse --xml
+
+name: Test and deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch: # adds a "Run workflow" button for manual runs
+
+env:
+  BACKEND_DIR: backend
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: pip install -r requirements.txt
+
+      # If any test fails, the pipeline stops here and nothing is deployed.
+      - name: Run tests
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: python -m pytest
+
+  deploy:
+    needs: test # only deploy if the test job passed
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ${{ env.BACKEND_DIR }}
+
+      # The free tier sleeps when idle, so the first request can be slow.
+      # Retry for up to ~3 minutes before declaring the deploy failed.
+      - name: Verify the live site
+        run: |
+          url="https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net/health"
+          for attempt in $(seq 1 12); do
+            if curl --fail --silent --max-time 20 "$url"; then
+              echo ""
+              echo "Health check passed on attempt $attempt"
+              exit 0
+            fi
+            echo "Attempt $attempt failed, waiting 15s..."
+            sleep 15
+          done
+          echo "Health check never passed: $url"
+          exit 1

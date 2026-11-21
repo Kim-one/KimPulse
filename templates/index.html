@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KimPulse - Cold Storage Monitoring</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; background: #f4f7f8; color: #1c2b33; }
+    header { background: #1f4e5f; color: #fff; padding: 16px 24px; }
+    header h1 { margin: 0; font-size: 22px; }
+    header p { margin: 4px 0 0; font-size: 13px; opacity: .85; }
+    main { max-width: 1000px; margin: 0 auto; padding: 20px; }
+    .units { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .card { background: #fff; border-radius: 8px; padding: 14px; border-left: 6px solid #2e9e6b; }
+    .card.alert { border-left-color: #c8402f; }
+    .card .temp { font-size: 28px; font-weight: 600; }
+    .card .state { font-size: 12px; font-weight: 600; }
+    section { background: #fff; border-radius: 8px; padding: 16px; margin-top: 16px; }
+    h2 { font-size: 16px; margin: 0 0 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e3e9ec; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>KimPulse</h1>
+    <p>Cold storage monitoring. All readings are simulated; no real sensors are connected.</p>
+  </header>
+  <main>
+    <div class="units">
+      {% for u in units %}
+      <div class="card {{ 'alert' if u.state == 'ALERT' }}">
+        <div>{{ u.unit }}</div>
+        <div class="temp">{{ u.latest_temp_c }}°C</div>
+        <div class="state">{{ u.state }} · {{ u.alert_count }} abnormal readings in 24 h</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <section>
+      <h2>Temperature, last 24 hours (safe limit {{ safe_limit }}°C)</h2>
+      <canvas id="chart" height="110"></canvas>
+    </section>
+
+    <section>
+      <h2>Abnormal readings ({{ alerts|length }})</h2>
+      <table>
+        <tr><th>Time (UTC)</th><th>Unit</th><th>Temp</th><th>Why it was flagged</th></tr>
+        {% for a in alerts %}
+        <tr><td>{{ a.timestamp[:16].replace('T', ' ') }}</td><td>{{ a.unit }}</td><td>{{ a.temp_c }}°C</td><td>{{ a.reason }}</td></tr>
+        {% else %}
+        <tr><td colspan="4">No abnormal readings.</td></tr>
+        {% endfor %}
+      </table>
+    </section>
+  </main>
+
+  <script>
+    // Fetch the readings from the API and draw one line per storage unit.
+    fetch('/api/readings').then(r => r.json()).then(readings => {
+      const units = [...new Set(readings.map(r => r.unit))];
+      const labels = readings.filter(r => r.unit === units[0]).map(r => r.timestamp.slice(11, 16));
+      const colors = ['#1f4e5f', '#2e9e6b', '#d08a1d', '#7a4fa3'];
+      const datasets = units.map((unit, i) => ({
+        label: unit,
+        data: readings.filter(r => r.unit === unit).map(r => r.temp_c),
+        borderColor: colors[i % colors.length], borderWidth: 1.5, pointRadius: 0,
+      }));
+      // A flat dashed line showing the safe limit.
+      datasets.push({ label: 'Safe limit', data: labels.map(() => {{ safe_limit }}),
+                      borderColor: '#c8402f', borderDash: [6, 4], borderWidth: 1, pointRadius: 0 });
+      new Chart(document.getElementById('chart'), {
+        type: 'line', data: { labels, datasets },
+        options: { scales: { y: { title: { display: true, text: '°C' } }, x: { ticks: { maxTicksLimit: 12 } } } },
+      });
+    });
+  </script>
+</body>
+</html>
