@@ -44,8 +44,7 @@ jobs:
       # If any test fails, the pipeline stops here and nothing is deployed.
       - name: Run tests
         working-directory: ${{ env.BACKEND_DIR }}
-        run: python -m pytest
-
+        run: python -m pytest tests/ -v
   deploy:
     needs: test # only deploy if the test job passed
     runs-on: ubuntu-latest
