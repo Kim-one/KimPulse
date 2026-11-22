@@ -1,6 +1,6 @@
 """Tests for the anomaly check. Run from the backend/ folder with:  python -m pytest"""
-from detector import find_alerts
-from simulator import FAULTS, INTERVAL_MINUTES, generate_readings
+from backend.detector import find_alerts
+from backend.simulator import FAULTS, INTERVAL_MINUTES, generate_readings
 
 
 def test_normal_readings_raise_no_alerts():
