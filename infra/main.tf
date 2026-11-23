@@ -93,6 +93,7 @@ resource "azurerm_linux_web_app" "app" {
   # Lets the GitHub Actions workflow deploy using a publish profile.
   # (A stronger setup is OIDC with a least-privilege identity - see README "Next steps".)
   webdeploy_publish_basic_authentication_enabled = true
+  ftp_publish_basic_authentication_enabled       = false
 
   site_config {
     always_on = false # must be false on the free tier
