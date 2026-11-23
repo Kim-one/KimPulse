@@ -1,5 +1,5 @@
 """Tests for the anomaly check. Run from the backend/ folder with:  python -m pytest"""
-from backend.detector import find_alerts
+from backend.detector import find_alerts, unit_status
 from backend.simulator import FAULTS, INTERVAL_MINUTES, generate_readings
 
 
@@ -29,3 +29,48 @@ def test_alerts_only_happen_during_faults():
 
 def test_reading_interval_is_five_minutes():
     assert INTERVAL_MINUTES == 5
+
+def test_latest_jump_anomaly_sets_unit_to_alert():
+    readings = [
+        {"unit": "Cooler A", "timestamp": str(i), "temp_c": 4.0}
+        for i in range(12)
+    ]
+
+    readings.append({
+        "unit": "Cooler A",
+        "timestamp": "12",
+        "temp_c": 7.5
+    })
+
+    alerts = find_alerts(readings)
+    status = unit_status(readings, alerts)
+
+    assert status[0]["state"] == "ALERT"
+    assert status[0]["latest_temp_c"] == 7.5
+    assert status[0]["alert_count"] == 1
+
+
+def test_historical_alert_does_not_keep_unit_in_alert_state():
+    readings = [
+        {"unit": "Cooler A", "timestamp": str(i), "temp_c": 4.0}
+        for i in range(12)
+    ]
+
+    readings.append({
+        "unit": "Cooler A",
+        "timestamp": "12",
+        "temp_c": 12.0
+    })
+
+    readings.append({
+        "unit": "Cooler A",
+        "timestamp": "13",
+        "temp_c": 4.0
+    })
+
+    alerts = find_alerts(readings)
+    status = unit_status(readings, alerts)
+
+    assert status[0]["state"] == "OK"
+    assert status[0]["latest_temp_c"] == 4.0
+    assert status[0]["alert_count"] == 1

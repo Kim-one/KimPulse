@@ -1,133 +1,538 @@
-# KimPulse – Cold Storage Monitoring
+﻿# KimPulse - Cold Storage Monitoring
 
-KimPulse watches the temperature of cold-storage units and flags readings that could
-put food at risk, such as a cooler that jumps from 4°C to 12°C. It runs on Azure,
-the infrastructure is defined in Terraform, and GitHub Actions tests and deploys
-every push.
+[![KimPulse CI](https://github.com/Kim-one/KimPulse/actions/workflows/ci.yml/badge.svg)](https://github.com/Kim-one/KimPulse/actions/workflows/ci.yml)
 
-**The readings are simulated.** There are no real sensors; a Python script generates
-the data and injects a few faults for the detector to find.
 
-**Live dashboard:** `https://<app_name>.azurewebsites.net`  <!-- TODO: fill in -->
+KimPulse is a Python-based cold-storage monitoring prototype that simulates temperature readings from multiple storage units and identifies abnormal temperature conditions.
 
-<!-- TODO: screenshot of the dashboard -->
+The project demonstrates cloud engineering concepts including infrastructure as code, automated testing, continuous integration, application health checks, monitoring dashboards and troubleshooting.
+
+
+
+**Important:** Sensor readings are simulated. KimPulse does not currently connect to physical sensors or collect real-world temperature data.
+
+
+
+## Project Overview
+
+
+
+Cold-storage environments need consistent temperature monitoring to help prevent food spoilage and equipment-related issues.
+
+
+
+KimPulse simulates four storage units, generates temperature readings over a 24-hour period, and identifies potentially unsafe conditions using two statistical detection rules.
+
+
+
+The dashboard provides an overview of storage unit conditions, temperature trends and detected anomalies.
+
+
+
+### Key Features
+
+
+
+- Simulated temperature readings for four storage units.
+
+- 24-hour temperature history with five-minute reading intervals.
+
+- Temperature threshold monitoring.
+
+- Statistical anomaly detection using rolling historical medians.
+
+- Dashboard displaying storage unit status and detected alerts.
+
+- JSON API endpoints for readings, alerts and unit status.
+
+- Application health-check endpoint.
+
+- Automated Python tests using pytest.
+
+- Terraform configuration for Azure infrastructure.
+
+- GitHub Actions CI pipeline for application testing and infrastructure validation.
+
+
 
 ## Architecture
 
+
+
+```mermaid
+
+flowchart TD
+
+   A[Python Sensor Simulator] --> B[Temperature Readings]
+
+   B --> C[Statistical Anomaly Detector]
+
+   C --> D[Flask Application]
+
+   D --> E[Monitoring Dashboard]
+
+   D --> F[JSON API Endpoints]
+
+
+
+   G[Developer] --> H[GitHub Repository]
+
+   H --> I[GitHub Actions CI]
+
+
+
+   I --> J[Python Tests]
+
+   I --> K[Terraform Formatting and Validation]
+
+
+
+   L[Terraform Configuration] -.-> M[Azure Resource Group]
+
+   M -.-> N[Azure App Service Plan]
+
+   N -.-> O[Azure Linux Web App]
+
+
+
+   style M stroke-dasharray: 5 5
+
+   style N stroke-dasharray: 5 5
+
+   style O stroke-dasharray: 5 5
+
 ```
- developer ──push──> GitHub repo
-                        │
-                        ▼
-              GitHub Actions pipeline
-              (test → deploy → verify)
-                        │
-                        ▼
-   ┌──────── Azure resource group: rg-kimpulse ─────────┐
-   │  App Service plan (F1, free)                       │
-   │    └── Linux web app: Flask                        │
-   │          simulator.py → detector.py → dashboard    │
-   │  Azure Monitor alert on /health  (TODO)            │
-   └────────────────────────────────────────────────────┘
-        ▲
-        └── all of the above is created by infra/main.tf (Terraform)
+
+
+
+The Azure infrastructure shown with dashed connections represents the intended deployment architecture. The Azure App Service deployment has not been completed because the subscription has no available F1 quota and is ineligible for a quota adjustment.
+
+
+
+## Technology Stack
+
+
+
+| Category | Technologies |
+
+|---|---|
+
+| Backend | Python, Flask |
+
+| Data simulation | Python random, datetime |
+
+| Anomaly detection | Python statistics |
+
+| Frontend | HTML, CSS, JavaScript |
+
+| Testing | pytest |
+
+| Continuous Integration | GitHub Actions |
+
+| Infrastructure as Code | Terraform |
+
+| Cloud platform | Microsoft Azure |
+
+| Version control | Git, GitHub |
+
+
+
+## How It Works
+
+
+
+### 1. Temperature Simulation
+
+
+
+The simulator generates readings for four storage units:
+
+
+
+- Cooler A: 4.0°C normal temperature
+
+- Cooler B: 4.0°C normal temperature
+
+- Cooler C: 3.5°C normal temperature
+
+- Cooler D: 4.5°C normal temperature
+
+
+
+Each unit generates one reading every five minutes for 24 hours.
+
+
+
+This produces:
+
+
+
+- 288 readings per storage unit.
+
+- 1,152 readings across all four units.
+
+- Three deliberately injected temperature faults.
+
+
+
+Random temperature variation is introduced to make the simulated readings more realistic. A fixed random seed makes the generated dataset reproducible.
+
+
+
+### 2. Anomaly Detection
+
+
+
+The detector uses two statistical rules.
+
+
+
+**Rule 1: Temperature Threshold**
+
+Any temperature reading above 8°C is flagged as potentially unsafe.
+
+
+
+**Rule 2: Temperature Deviation**
+
+Each reading is compared against the median of the previous 12 readings for its storage unit.
+
+If the temperature differs from that historical median by more than 3°C, it is flagged as an anomaly.
+
+Using the median helps prevent short temperature spikes from significantly affecting the historical baseline.
+
+These are rule-based statistical checks, not a machine-learning model.
+
+
+
+### 3. Dashboard and API
+
+
+
+The Flask application presents the simulated monitoring results through a web dashboard.
+
+
+
+Available endpoints:
+
+
+
+| Endpoint | Description |
+
+|---|---|
+
+| `/` | Monitoring dashboard |
+
+| `/health` | Application health check |
+
+| `/api/readings` | All simulated temperature readings |
+
+| `/api/alerts` | Detected abnormal readings |
+
+| `/api/status` | Summary of each storage unit |
+
+
+
+Readings are generated when the Flask application starts and held in memory. No database or persistent storage is currently configured.
+
+
+
+## Monitoring and Alerting
+
+
+
+KimPulse demonstrates basic application and environmental monitoring concepts through:
+
+
+
+- Temperature threshold checks.
+
+- Historical temperature deviation detection.
+
+- Per-unit alert counts.
+
+- Storage unit status indicators.
+
+- An alert table showing detected abnormal readings.
+
+- A `/health` endpoint for application health checks.
+
+
+
+The dashboard displays simulated monitoring information. It is not currently connected to Azure Monitor, Application Insights or physical monitoring equipment.
+
+
+
+## Infrastructure as Code
+
+
+
+Terraform is used to define the intended Azure infrastructure.
+
+
+
+The configuration includes:
+
+
+
+- Azure Resource Group.
+
+- Linux App Service Plan using the F1 tier.
+
+- Azure Linux Web App.
+
+- Python application runtime configuration.
+
+- Application deployment settings.
+
+
+
+Terraform formatting and configuration validation are automated through GitHub Actions.
+
+
+
+### Azure Deployment Status
+
+
+
+The Terraform configuration was successfully initialized and validated.
+
+
+
+During deployment, Azure rejected the F1 App Service Plan creation because the subscription had an F1 quota limit of zero.
+
+
+
+The subscription was also determined to be ineligible for a quota adjustment.
+
+
+
+To maintain the project's zero-cost requirement, the deployment was not upgraded to a paid hosting tier.
+
+
+
+The resource group was created, but the App Service Plan and Web App were not successfully provisioned.
+
+
+
+The project therefore currently runs locally, with Azure infrastructure defined in Terraform but not fully deployed.
+
+
+
+## Continuous Integration
+
+
+
+GitHub Actions automatically runs two validation jobs when relevant changes are pushed to the main branch or submitted through a pull request.
+
+
+
+**Python Tests**
+
+
+
+- Sets up Python 3.12.
+
+- Installs backend dependencies.
+
+- Executes the pytest test suite.
+
+
+
+**Terraform Validation**
+
+
+
+- Sets up Terraform.
+
+- Checks Terraform formatting.
+
+- Initializes the Terraform providers.
+
+- Validates the Terraform configuration.
+
+
+
+Both jobs currently pass successfully.
+
+
+
+## Automated Tests
+
+
+
+The project includes four automated tests:
+
+
+
+| Test | Purpose |
+
+|---|---|
+
+| Normal readings | Confirms normal readings do not generate alerts |
+
+| Injected faults | Confirms deliberately injected faults are detected |
+
+| Alert accuracy | Confirms alerts correspond to injected fault periods |
+
+| Reading interval | Confirms the five-minute reading interval |
+
+
+
+Run the tests from the project root:
+
+
+
+```powershell
+
+python -m pytest backend/tests/ -v
+
 ```
 
-| Part | Tool | Why |
-|---|---|---|
-| App | Python, Flask | Small and easy to read |
-| Anomaly check | Median of recent readings + a safe limit | Simple, explainable, no heavy dependencies |
-| Infrastructure | Terraform | The whole environment can be rebuilt or deleted with one command |
-| Compute | Azure App Service, F1 tier | Always-free tier, enough for a demo |
-| CI/CD | GitHub Actions | Tests run before every deploy; a health check runs after |
 
-## How the anomaly check works
 
-Every reading is checked against two rules (see `backend/detector.py`):
+## Running Locally
 
-1. **Limit:** is it above the safe limit of 8°C?
-2. **Jump:** is it more than 3°C away from the median of that unit's previous hour?
 
-The median is used instead of the average so a short spike does not distort the
-unit's idea of "normal".
 
-## Run it locally
+### Prerequisites
+
+
+
+- Python 3.12 or later
+
+- Git
+
+
+
+### 1. Clone the repository
+
+
 
 ```bash
+
+git clone https://github.com/Kim-one/KimPulse.git
+
+cd KimPulse
+
+```
+
+
+
+### 2. Create a virtual environment
+
+
+
+Windows PowerShell:
+
+
+
+```powershell
+
+python -m venv .venv
+
+.venv\\Scripts\\Activate.ps1
+
+```
+
+
+
+### 3. Install dependencies
+
+
+
+```powershell
+
+pip install -r backend/requirements.txt
+
+```
+
+
+
+### 4. Start the Flask application
+
+
+
+```powershell
+
 cd backend
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-python -m pytest             # run the tests
-flask --app app run          # open http://localhost:5000
+
+python -m flask --app app run
+
 ```
 
-## Deploy it to Azure
 
-Prerequisites: an Azure account, the [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli),
-and [Terraform](https://developer.hashicorp.com/terraform/install).
 
-```bash
-# 1. Create the infrastructure
-az login
-cd infra
-terraform init
-terraform apply -var="subscription_id=$(az account show --query id -o tsv)"
-# note the app_name and app_url it prints
+### 5. Open the dashboard
 
-# 2. Connect GitHub to Azure (one time)
-az webapp deployment list-publishing-profiles \
-  --name <app_name> --resource-group rg-kimpulse --xml
-# GitHub repo > Settings > Secrets and variables > Actions:
-#   secret   AZURE_WEBAPP_PUBLISH_PROFILE = the XML printed above
-#   variable AZURE_WEBAPP_NAME            = <app_name>
 
-# 3. Deploy
-git push origin main        # the pipeline does the rest
-```
 
-## Runbook
+Visit:
 
-### The pipeline failed
-| Failed step | Likely cause | Fix |
-|---|---|---|
-| Install dependencies | A package is missing from `requirements.txt` | Add it, push again |
-| Run tests | A code change broke the detector or simulator | Run `python -m pytest` locally in `backend/` |
-| Deploy to Azure | Publish profile secret is wrong or expired | Re-run the `list-publishing-profiles` command and update the secret |
-| Verify the live site | App deployed but crashes on startup | See "The site is down" below |
 
-### The site is down or returning errors
-1. Check it: `curl -i https://<app_name>.azurewebsites.net/health`
-2. Read the live logs: `az webapp log tail --name <app_name> --resource-group rg-kimpulse`
-3. A 403 "site disabled" page means the free tier's daily CPU quota ran out. It resets at midnight UTC.
-4. Restart: `az webapp restart --name <app_name> --resource-group rg-kimpulse`
-5. Roll back: `git revert <bad commit>` and push; the pipeline redeploys the previous version.
 
-<!-- TODO: add each real problem you hit while building this. Real incidents make the best runbook entries. -->
+`http://127.0.0.1:5000`
 
-### Tear everything down
-```bash
-cd infra
-terraform destroy -var="subscription_id=$(az account show --query id -o tsv)"
-```
 
-## Cost
 
-$0. The App Service plan is the always-free F1 tier, and a $1 budget alert is set on
-the subscription as a safety net. <!-- TODO: screenshot of the budget alert -->
+The API endpoints can also be accessed directly through the browser.
 
-## Trade-offs (what I would change for production)
 
-- **Simulated data.** A real system would read from sensors through a message queue or IoT service.
-- **No database.** Readings are generated when the app starts. Production would store them in a time-series database.
-- **Simple statistical check.** Good at sudden jumps, but it would miss a slow drift. See Next steps.
-- **Publish profile for deploys.** Simple, but it is a long-lived secret. Next step is OIDC with a least-privilege identity.
-- **F1 tier.** The app sleeps when idle, so the first request is slow. Production would use a paid tier with Always On.
-- **Local Terraform state.** Fine for one person; a team would keep state in a shared storage account.
 
-## Next steps
+## Future Improvements
 
-- [ ] Azure Monitor alert when `/health` fails or 5xx errors spike
-- [ ] Try an Isolation Forest model (as in my network traffic anomaly detection project) in place of the simple check
-- [ ] Python script that lists Azure resources and flags unused ones
-- [ ] Dockerfile
-- [ ] Switch the pipeline to OIDC login
-- [ ] Add humidity readings
+
+
+Potential extensions include:
+
+
+
+- Integrating physical IoT temperature sensors.
+
+- Implementing persistent storage for historical readings.
+
+- Adding real-time data ingestion.
+
+- Integrating Azure Monitor and Application Insights.
+
+- Implementing notification services for temperature alerts.
+
+- Introducing machine-learning anomaly detection using Isolation Forest.
+
+- Deploying the application to an eligible cloud hosting environment.
+
+- Adding authentication and role-based access controls.
+
+
+
+## Project Goals
+
+
+
+KimPulse was developed as a hands-on cloud engineering portfolio project to explore:
+
+
+
+- Python application development.
+
+- Monitoring and anomaly detection.
+
+- Automated testing and continuous integration.
+
+- Infrastructure as Code using Terraform.
+
+- Azure resource provisioning.
+
+- Cloud deployment troubleshooting.
+
+
+
+**Author:** Kimone Barrett
+
+
+
+**GitHub:** [Kim-one](https://github.com/Kim-one)
+
+
+
+**Repository:** [KimPulse](https://github.com/Kim-one/KimPulse)

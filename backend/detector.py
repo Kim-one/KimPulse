@@ -49,14 +49,33 @@ def find_alerts(readings):
 
 
 def unit_status(readings, alerts):
-    """Summarise each unit: latest temperature, number of alerts, and OK / ALERT."""
-    status = {}
-    for reading in readings:   # readings are oldest first, so the last one seen is the latest
-        status[reading["unit"]] = {"unit": reading["unit"], "latest_temp_c": reading["temp_c"],
-                                   "alert_count": 0, "state": "OK"}
+    """Summarise each unit's latest reading, alert count, and current state."""
+    latest_readings = {}
+
+    for reading in readings:
+        latest_readings[reading["unit"]] = reading
+
+    alert_count = {}
+    alerted_readings = set()
+
     for alert in alerts:
-        status[alert["unit"]]["alert_count"] += 1
-    for unit in status.values():
-        # A unit is in ALERT if its most recent reading is itself abnormal.
-        unit["state"] = "ALERT" if unit["latest_temp_c"] > SAFE_LIMIT_C else "OK"
-    return list(status.values())
+        unit = alert["unit"]
+        alert_count[unit] = alert_count.get(unit, 0) + 1
+        alerted_readings.add((unit, alert["timestamp"]))
+
+    status = []
+
+    for unit, reading in latest_readings.items():
+        is_latest_alert = (
+            unit,
+            reading["timestamp"]
+        ) in alerted_readings
+
+        status.append({
+            "unit": unit,
+            "latest_temp_c": reading["temp_c"],
+            "alert_count": alert_count.get(unit, 0),
+            "state": "ALERT" if is_latest_alert else "OK"
+        })
+
+    return status
