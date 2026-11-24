@@ -361,7 +361,7 @@ Both jobs currently pass successfully.
 
 
 
-The project includes four automated tests:
+The project includes six automated tests:
 
 
 
